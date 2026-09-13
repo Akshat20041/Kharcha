@@ -1,0 +1,45 @@
+{
+  "name": "kharcha",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "npm": ">=11"
+  },
+  "scripts": {
+    "check:deployment": "node scripts/check-deployment.mjs",
+    "db:prepare:production": "npm run db:prepare:production --workspace @kharcha/api --",
+    "data:transfer": "npm run data:transfer --workspace @kharcha/api --",
+    "test:groq:live": "npm run test:groq:live --workspace @kharcha/api",
+    "dev:db": "npm run dev:db --workspace @kharcha/api",
+    "dev:api": "npm run dev --workspace @kharcha/api",
+    "dev:web": "npm run dev --workspace @kharcha/web",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "npm run lint --workspaces",
+    "test": "npm run test --workspace @kharcha/api",
+    "test:integration": "npm run db:generate --workspace @kharcha/api && npm run test:integration --workspace @kharcha/api",
+    "db:generate": "npm run db:generate --workspace @kharcha/api",
+    "db:migrate": "npm run db:migrate --workspace @kharcha/api",
+    "db:seed": "npm run db:seed --workspace @kharcha/api",
+    "db:studio": "npm run db:studio --workspace @kharcha/api",
+    "test:web": "npm run test --workspace @kharcha/web",
+    "test:e2e": "npm run test:e2e --workspace @kharcha/web",
+    "test:e2e:auth": "npm run test:e2e:auth --workspace @kharcha/web",
+    "db:validate": "npm run db:validate --workspace @kharcha/api",
+    "db:check": "npm run db:check --workspace @kharcha/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.0.0"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0"
+  }
+}

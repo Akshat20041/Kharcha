@@ -1,0 +1,1418 @@
+# KharCha: Scaling, Multi-User, Deployment, and Mobile Roadmap
+
+## Purpose
+
+KharCha has completed the core product work needed for a useful personal-finance tracker:
+
+- V1 complete
+- V2 natural-language expense entry complete
+- V3 analytics complete
+- V5 Excel export complete
+- V4 intentionally skipped
+- V5 imports and CSV export intentionally deferred
+
+The next objective is **not to add more finance features immediately**.
+
+The next objective is to turn the existing single-user local application into a:
+
+1. clean GitHub-hosted codebase,
+2. secure multi-user product,
+3. cloud-deployed web application,
+4. maintainable and scalable service,
+5. foundation for a future mobile app.
+
+This roadmap must be implemented **stage by stage**.
+
+Do not jump ahead. At the end of every stage, stop, summarize the work, run verification, and wait for approval before beginning the next stage.
+
+---
+
+# Target Architecture
+
+The long-term architecture should remain simple:
+
+```text
+                    GitHub
+                      |
+                 CI / CD pipeline
+                      |
+          +-----------+-----------+
+          |                       |
+          v                       v
+   Web Frontend                Node.js API
+   Next.js / TS               TypeScript
+   apps/web                    apps/api
+          |                       |
+          | HTTPS / REST           |
+          +-----------+-----------+
+                      |
+                      v
+                PostgreSQL
+                 Supabase
+
+                      +
+                 Supabase Auth
+                      |
+                      v
+                  JWT tokens
+
+Later:
+
+                 Mobile App
+              React Native / Expo
+                 apps/mobile
+                      |
+                      v
+                 Same REST API
+```
+
+The backend remains the source of truth.
+
+The frontend and eventual mobile client must never connect directly to the application's business tables in PostgreSQL.
+
+---
+
+# Recommended Initial Cloud Stack
+
+Use this stack unless repository constraints justify a different choice.
+
+## Source Control
+
+**GitHub**
+
+- repository hosting
+- pull requests
+- branch protection later
+- GitHub Actions for CI
+- deployment integrations
+
+## Web Frontend
+
+**Vercel**
+
+Deploy `apps/web`.
+
+Reason:
+
+- strong Next.js support
+- GitHub auto-deployment
+- preview deployments
+- zero-cost Hobby tier for personal/non-commercial projects
+
+Important:
+
+Vercel Hobby is intended for personal/non-commercial usage. If KharCha becomes a commercial/public product, review the plan and terms before launch.
+
+## Backend API
+
+**Render Web Service**
+
+Deploy `apps/api`.
+
+Reason:
+
+- easy Node.js deployment
+- GitHub integration
+- environment variables
+- HTTPS URL
+- free hobby deployment
+
+Free Render services can spin down after inactivity, so cold starts are acceptable during this stage.
+
+Do not architect the application around the assumption that free hosting has production-grade availability.
+
+## PostgreSQL + Authentication
+
+**Supabase**
+
+Use:
+
+- Supabase PostgreSQL
+- Supabase Auth
+- potentially Supabase Storage later
+
+Keep Prisma as the application ORM if Prisma is already used.
+
+Supabase is the hosted PostgreSQL provider, not a replacement for the existing Node.js backend.
+
+## AI Parsing
+
+Continue using the existing Groq integration.
+
+`GROQ_API_KEY` must remain backend-only.
+
+---
+
+# Non-Negotiable Engineering Rules
+
+These rules apply to every stage.
+
+1. Keep `apps/web` and `apps/api` separate.
+2. Node.js + TypeScript remains the backend.
+3. PostgreSQL remains the primary database.
+4. Prisma remains the ORM unless there is a strong technical reason to change it.
+5. REST API remains the application boundary.
+6. No browser-to-database access for core finance operations.
+7. No mobile-client-to-database access for core finance operations.
+8. Every user's financial data must be isolated by user ID.
+9. Never trust a `userId` sent by the browser.
+10. Derive authenticated user identity from the verified authentication token.
+11. Never commit `.env`, secrets, database passwords, Groq keys, or JWT secrets.
+12. Existing financial calculations remain deterministic backend logic.
+13. Natural-language AI remains an interpretation layer, not financial authority.
+14. Migrations must be explicit and reviewable.
+15. Every stage must include automated verification.
+16. Do not add microservices merely for "scalability."
+17. Keep the application a modular monolith until actual scale requires otherwise.
+
+---
+
+# STAGE 0: Freeze the Current Working Product
+
+## Goal
+
+Create a safe checkpoint before infrastructure and multi-user work begins.
+
+## Tasks
+
+1. Run the full existing test suite.
+2. Run frontend and backend builds.
+3. Run lint and type checks.
+4. Confirm current local application works.
+5. Confirm Excel export still works.
+6. Confirm Groq natural-language parsing still works.
+7. Confirm recurring expenses and analytics work.
+8. Review Prisma migrations.
+9. Remove accidental generated files or local secrets from Git tracking.
+10. Ensure `.gitignore` is correct.
+11. Ensure `.env.example` files contain variable names but no secrets.
+12. Update README with current local setup.
+13. Create a Git commit representing the current stable product.
+14. Tag the version:
+
+```text
+v1.0.0-local
+```
+
+## Do Not
+
+- change database ownership semantics,
+- add authentication,
+- deploy,
+- redesign UI,
+- add new finance features.
+
+## Exit Criteria
+
+The exact current product can be restored from Git and run locally from documented instructions.
+
+## Stop After Stage 0
+
+Provide:
+
+- verification results,
+- files changed,
+- environment variables documented,
+- commit/tag recommendation,
+- any problems discovered.
+
+---
+
+# STAGE 1: GitHub Repository and CI Foundation
+
+## Goal
+
+Make GitHub the canonical source of the project and ensure every change is automatically validated.
+
+## Tasks
+
+### Repository
+
+Prepare the monorepo for GitHub.
+
+Expected high-level structure:
+
+```text
+/
+├── apps/
+│   ├── web/
+│   └── api/
+├── packages/              # optional shared code later
+├── Docs/
+├── prisma/ or app-specific Prisma location
+├── .github/
+│   └── workflows/
+├── README.md
+├── .gitignore
+└── package.json
+```
+
+Do not restructure working code unnecessarily.
+
+### GitHub Actions
+
+Create CI triggered on pull requests and pushes to the main development branch.
+
+CI should run, as applicable:
+
+- dependency install
+- lint
+- type check
+- backend tests
+- frontend tests
+- integration tests that can safely run in CI
+- Prisma validation
+- production builds
+
+Use dependency caching where appropriate.
+
+Do not put production secrets in GitHub Actions.
+
+### Branch Strategy
+
+Keep it simple:
+
+```text
+main
+feature/*
+fix/*
+```
+
+No complicated GitFlow process.
+
+### Documentation
+
+README should include:
+
+- product overview
+- architecture
+- local setup
+- environment setup
+- database setup
+- testing
+- build commands
+- monorepo layout
+
+## Exit Criteria
+
+A fresh clone from GitHub can be configured and run using documented commands.
+
+A pull request automatically runs validation.
+
+## Stop After Stage 1
+
+Do not deploy yet.
+
+---
+
+# STAGE 2: Multi-User Data Model
+
+## Goal
+
+Convert the current application from effectively single-user data to correctly isolated multi-user data.
+
+This stage is critical.
+
+Do not implement authentication UI yet unless required for testing.
+
+---
+
+## 2.1 User Identity Model
+
+Introduce an application-level user identifier.
+
+Recommended approach:
+
+Use the authenticated Supabase user UUID as the canonical identity.
+
+If an internal `User` model is useful, create one such as:
+
+```text
+User
+- id
+- authProviderUserId
+- email
+- displayName
+- timezone
+- currency
+- createdAt
+- updatedAt
+```
+
+Do not store passwords.
+
+Supabase Auth owns authentication credentials.
+
+---
+
+## 2.2 Add Ownership to User Data
+
+All user-owned finance entities must be associated with a user.
+
+Audit the entire schema.
+
+At minimum inspect:
+
+- Transaction
+- RecurringExpense
+- Category if categories can be user-specific
+- exports if persisted
+- future custom categories
+- AI-related saved drafts if any
+- analytics materializations if any
+
+Example:
+
+```text
+Transaction
+- id
+- userId
+- ...
+```
+
+```text
+RecurringExpense
+- id
+- userId
+- ...
+```
+
+Never allow one user's query to accidentally return another user's records.
+
+---
+
+## 2.3 Category Strategy
+
+Decide explicitly between:
+
+### System categories
+
+Global immutable/shared definitions.
+
+and:
+
+### User categories
+
+Custom categories owned by a user.
+
+A reasonable design is:
+
+```text
+Category
+- id
+- name
+- isSystem
+- userId nullable
+```
+
+Rules:
+
+- system categories can be used by everyone,
+- custom categories belong to exactly one user,
+- a user cannot access another user's custom category.
+
+Do not overbuild category customization if it is not currently required.
+
+---
+
+## 2.4 Repository and Service Isolation
+
+Every user-specific repository query must scope by authenticated user ID.
+
+Bad:
+
+```text
+findTransactionById(transactionId)
+```
+
+Preferred semantic behavior:
+
+```text
+findTransactionForUser(transactionId, authenticatedUserId)
+```
+
+The same applies to:
+
+- updates
+- deletes
+- analytics
+- recurring expenses
+- exports
+
+Ownership checks must exist on the server.
+
+Frontend hiding is not security.
+
+---
+
+## 2.5 Migration Strategy
+
+Existing local data currently has no user owner.
+
+Create a safe migration path.
+
+For development data, it is acceptable to associate all existing data with one development user.
+
+Document exactly how this works.
+
+Do not silently delete existing transactions.
+
+---
+
+## 2.6 Tests
+
+Add multi-user isolation tests.
+
+At minimum:
+
+### User A
+
+Creates transaction A.
+
+### User B
+
+Creates transaction B.
+
+Verify:
+
+- A cannot list B's transaction.
+- A cannot fetch B's transaction by ID.
+- A cannot edit B's transaction.
+- A cannot delete B's transaction.
+- A's dashboard excludes B.
+- A's exports exclude B.
+- A's recurring expenses exclude B.
+
+Repeat relevant checks from B's perspective.
+
+## Exit Criteria
+
+The data layer is multi-user safe before public authentication is connected.
+
+## Stop After Stage 2
+
+Do not expose public sign-up until isolation tests pass.
+
+---
+
+# STAGE 3: Authentication and Authorization
+
+## Goal
+
+Add real authentication using Supabase Auth while keeping the Node.js API authoritative.
+
+---
+
+## 3.1 Authentication
+
+Implement:
+
+- sign up
+- sign in
+- sign out
+- persisted session
+- protected application routes
+
+Recommended first methods:
+
+1. email + password, or
+2. email magic link
+
+Google OAuth may be added after the base flow works.
+
+Do not implement five authentication providers at once.
+
+---
+
+## 3.2 Backend Token Verification
+
+Frontend receives Supabase authentication session.
+
+For every protected API request:
+
+```text
+Authorization: Bearer <access-token>
+```
+
+Node.js API must:
+
+1. extract token,
+2. verify token using the supported Supabase server-side verification mechanism,
+3. derive authenticated user ID,
+4. attach authenticated identity to request context,
+5. perform all database operations using that identity.
+
+Never accept this:
+
+```json
+{
+  "userId": "some-user-id"
+}
+```
+
+as proof of identity.
+
+---
+
+## 3.3 Authorization Middleware
+
+Create reusable middleware such as conceptually:
+
+```text
+requireAuth
+```
+
+Protected routes include:
+
+- transactions
+- recurring expenses
+- analytics
+- exports
+- natural-language transaction workflows that access user data
+- custom categories
+
+Health checks may remain public.
+
+---
+
+## 3.4 Frontend UX
+
+Add:
+
+- login page
+- signup page
+- logout
+- loading state while session is restored
+- useful auth errors
+- redirect unauthenticated users to login
+
+Keep the design consistent with KharCha.
+
+---
+
+## 3.5 Profile Settings
+
+Add only minimal settings initially:
+
+- display name
+- timezone
+- default currency
+
+Default currency can remain INR.
+
+Avoid building a full account-management suite.
+
+---
+
+## Exit Criteria
+
+Two real accounts can use the same deployed/local system while seeing completely isolated finance data.
+
+## Stop After Stage 3
+
+Perform a security review before deployment.
+
+---
+
+# STAGE 4: Production Configuration and Security Hardening
+
+## Goal
+
+Make the application safe enough for an internet-accessible beta.
+
+---
+
+## 4.1 Environment Configuration
+
+Clearly separate:
+
+```text
+development
+test
+production
+```
+
+Document every environment variable.
+
+Likely examples:
+
+```text
+DATABASE_URL
+DIRECT_URL
+SUPABASE_URL
+SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY   # only if genuinely required server-side
+GROQ_API_KEY
+WEB_ORIGIN
+API_BASE_URL
+NODE_ENV
+```
+
+Use actual variable names already established in the repository where possible.
+
+Never expose private keys through variables prefixed for browser exposure.
+
+---
+
+## 4.2 CORS
+
+Restrict API CORS to known frontend origins in production.
+
+Do not use unrestricted `*` for authenticated production APIs.
+
+---
+
+## 4.3 HTTP Security
+
+Review/add:
+
+- secure HTTP headers,
+- request size limits,
+- safe JSON parsing,
+- central error handler,
+- no stack traces returned to users in production,
+- input validation on all write endpoints.
+
+---
+
+## 4.4 Rate Limiting
+
+Add sensible rate limits, particularly to:
+
+- authentication-adjacent endpoints,
+- AI parsing endpoint,
+- export endpoint,
+- expensive analytics endpoints if relevant.
+
+Do not make local development painful.
+
+---
+
+## 4.5 Groq Abuse Protection
+
+Natural-language parsing costs external API capacity.
+
+Ensure:
+
+- only authenticated users can use it,
+- request size is bounded,
+- reasonable per-user rate limiting exists,
+- provider failures degrade gracefully,
+- API key remains backend-only.
+
+---
+
+## 4.6 Logging
+
+Implement structured server logging.
+
+Include useful metadata such as:
+
+- request ID
+- route
+- status code
+- latency
+- authenticated user ID only where appropriate
+
+Never log:
+
+- access tokens
+- passwords
+- Groq API key
+- full database URLs
+- sensitive raw financial payloads unnecessarily
+
+---
+
+## 4.7 Health Endpoints
+
+Provide:
+
+```text
+GET /health
+```
+
+and optionally:
+
+```text
+GET /ready
+```
+
+if database readiness should be checked separately.
+
+---
+
+## Exit Criteria
+
+Security checklist passes and production configuration is documented.
+
+## Stop After Stage 4
+
+---
+
+# STAGE 5: Cloud Deployment
+
+## Goal
+
+Deploy a functioning beta accessible from the internet.
+
+---
+
+# 5.1 Supabase
+
+Create a Supabase project.
+
+Configure:
+
+- hosted PostgreSQL
+- authentication
+- production database connection
+- connection pooling if recommended for the deployment model
+
+Apply Prisma migrations through a controlled deployment/migration workflow.
+
+Do not use `prisma db push` as an uncontrolled production migration strategy.
+
+Seed only required system/reference data.
+
+Do not seed personal development transactions.
+
+---
+
+# 5.2 Render API Deployment
+
+Deploy `apps/api` as a Render Web Service.
+
+Configure:
+
+- correct repository/root directory
+- install/build command
+- start command
+- health-check endpoint
+- Node runtime version
+- production environment variables
+- Supabase/Postgres connection
+- Groq API key
+- allowed web origin
+
+Ensure the server listens on:
+
+```text
+0.0.0.0
+```
+
+and the platform-provided port.
+
+Do not hardcode localhost production URLs.
+
+---
+
+# 5.3 Vercel Web Deployment
+
+Deploy `apps/web`.
+
+Configure:
+
+- API base URL
+- Supabase public authentication configuration
+- production redirect URLs
+- environment-specific variables
+
+Connect GitHub.
+
+Use:
+
+- production deployment from `main`
+- preview deployments for pull requests where practical
+
+---
+
+# 5.4 Deployment Verification
+
+Create two test accounts.
+
+Verify in production:
+
+- signup
+- login
+- logout
+- transaction CRUD
+- split expense
+- recurring expenses
+- analytics
+- natural-language parsing
+- Excel export
+- user-data isolation
+- browser refresh/session restoration
+- API errors
+- mobile-responsive layout
+
+---
+
+## Free-Tier Expectations
+
+The initial free deployment is for a hobby/beta environment.
+
+Expected limitations may include:
+
+- sleeping API instances,
+- cold starts,
+- free database storage/usage limits,
+- no production SLA,
+- free-tier inactivity pauses,
+- provider limits changing over time.
+
+Do not introduce hacks merely to keep free instances artificially awake.
+
+Document upgrade points.
+
+## Exit Criteria
+
+A user can visit a public URL, create an account, and use KharCha end to end.
+
+## Stop After Stage 5
+
+This is the first public beta checkpoint.
+
+Suggested tag:
+
+```text
+v2.0.0-beta
+```
+
+---
+
+# STAGE 6: CI/CD and Deployment Reliability
+
+## Goal
+
+Make deployment repeatable and safe rather than manual.
+
+---
+
+## 6.1 Deployment Flow
+
+Target:
+
+```text
+feature branch
+      |
+      v
+Pull Request
+      |
+      v
+GitHub Actions
+ lint / test / typecheck / build
+      |
+      v
+merge to main
+      |
+      +------> Vercel deploy
+      |
+      +------> Render deploy
+```
+
+---
+
+## 6.2 Migration Safety
+
+Create a documented production migration process.
+
+Requirements:
+
+- migrations committed to Git,
+- migration history preserved,
+- deploy failure must be diagnosable,
+- destructive migrations require explicit review.
+
+Avoid automatically running unsafe schema changes before application compatibility is considered.
+
+---
+
+## 6.3 Backups
+
+Free database plans may not provide strong backup guarantees.
+
+Document:
+
+- current backup capabilities,
+- manual backup/export procedure,
+- restore procedure.
+
+Before inviting meaningful external users, establish a proper automated backup strategy or move to a plan that provides it.
+
+---
+
+## Exit Criteria
+
+A normal code change can move from PR to production predictably.
+
+## Stop After Stage 6
+
+---
+
+# STAGE 7: Scalability Refactor
+
+## Goal
+
+Prepare for growth without prematurely introducing distributed systems.
+
+Do this only after the deployed application is working.
+
+---
+
+## 7.1 Maintain Modular Monolith
+
+Do NOT split into microservices.
+
+Organize backend by domains/modules, such as:
+
+```text
+auth
+users
+transactions
+categories
+recurring
+analytics
+expense-parser
+exports
+```
+
+Keep clear boundaries.
+
+---
+
+## 7.2 Database Index Review
+
+Review production query patterns.
+
+Likely useful composite indexes may include combinations involving:
+
+```text
+userId + transactionDate
+userId + categoryId
+userId + expenseNature
+userId + recurringExpenseId
+```
+
+Do not blindly create indexes.
+
+Use actual queries and query plans where appropriate.
+
+---
+
+## 7.3 Pagination
+
+Ensure transaction APIs use proper server-side pagination.
+
+For larger datasets, prefer stable cursor-based pagination where it materially improves behavior.
+
+Do not fetch a user's entire transaction history for routine list screens.
+
+---
+
+## 7.4 Analytics Efficiency
+
+Analytics should be computed server-side/database-side.
+
+Avoid:
+
+```text
+fetch every transaction -> calculate entire dashboard in browser
+```
+
+Use SQL/Prisma aggregation where suitable.
+
+Only introduce precomputed analytics if real performance data shows it is needed.
+
+---
+
+## 7.5 Background Work
+
+Identify jobs that may become slow:
+
+- large Excel export,
+- recurring transaction generation,
+- future imports,
+- future notification processing.
+
+Do not introduce a queue until synchronous execution is actually problematic.
+
+Document where a job queue could fit later.
+
+---
+
+## 7.6 API Versioning
+
+Do not create `/v1`, `/v2`, `/v3` versions merely because product versions were named V1/V2/V3.
+
+Product roadmap versions are not automatically API versions.
+
+Introduce API versioning only if backward compatibility requires it.
+
+---
+
+## 7.7 Observability
+
+Add useful production monitoring.
+
+At minimum:
+
+- error tracking
+- request/error logs
+- basic uptime monitoring
+- slow endpoint identification
+
+Keep tooling lightweight initially.
+
+---
+
+## Exit Criteria
+
+The architecture can support substantially more users without changing core business logic or creating cross-user data risks.
+
+## Stop After Stage 7
+
+---
+
+# STAGE 8: Productization for Multiple Users
+
+## Goal
+
+Improve the experience from "developer beta" to "real user product."
+
+---
+
+## Tasks
+
+Add only high-value account/product features:
+
+- onboarding
+- first-expense experience
+- profile/settings
+- currency/timezone configuration
+- account deletion
+- export-my-data
+- privacy policy placeholder/documentation
+- terms placeholder/documentation
+- data retention decisions
+- user-friendly empty states
+- user-friendly auth recovery
+
+Consider:
+
+- password reset
+- email verification
+- Google sign-in
+
+Do not add social/community features.
+
+---
+
+## Privacy Requirement
+
+Because KharCha handles financial behavior data, explicitly define:
+
+- what is stored,
+- why it is stored,
+- how users can delete it,
+- what is sent to Groq,
+- whether transaction descriptions are sent to the AI provider,
+- retention expectations.
+
+Do not pretend the application has regulatory compliance certifications it has not obtained.
+
+---
+
+## Exit Criteria
+
+The application is understandable and controllable by someone other than the developer.
+
+## Stop After Stage 8
+
+---
+
+# STAGE 9: Progressive Web App
+
+## Goal
+
+Make KharCha feel app-like before creating a second full client codebase.
+
+---
+
+## Tasks
+
+Evaluate and implement PWA capabilities where compatible with the existing frontend:
+
+- installable web app
+- application manifest
+- icons
+- standalone display mode
+- mobile viewport correctness
+- splash behavior where supported
+
+Offline financial writes are NOT required initially.
+
+Do not build complex offline synchronization yet.
+
+If caching is introduced, never serve one user's protected financial data to another user.
+
+---
+
+## Exit Criteria
+
+KharCha can be installed from the browser onto a supported phone/home screen and provides a good mobile experience.
+
+## Stop After Stage 9
+
+---
+
+# STAGE 10: Native Mobile App Foundation
+
+## Goal
+
+Create a real mobile application without duplicating backend business logic.
+
+Recommended stack:
+
+**React Native + Expo + TypeScript**
+
+Add:
+
+```text
+apps/mobile
+```
+
+---
+
+## Architecture
+
+```text
+apps/web --------\
+                  \
+                   --> apps/api --> PostgreSQL
+                  /
+apps/mobile -----/
+```
+
+Both clients consume the same REST API.
+
+Do not rewrite transaction calculations in mobile code.
+
+---
+
+## Shared Packages
+
+Only after duplication appears, consider shared packages such as:
+
+```text
+packages/
+├── api-types/
+├── validation/
+└── shared-utils/
+```
+
+Do not share React web-specific components with React Native unless genuinely compatible.
+
+---
+
+## Mobile V1 Features
+
+Start with:
+
+- login
+- dashboard
+- natural-language quick expense
+- manual expense
+- transaction list
+- recurring expense view
+
+Do not port every web feature in the first mobile milestone.
+
+Excel export can initially remain web-first if mobile download UX is awkward.
+
+---
+
+## Authentication
+
+Use a mobile-compatible Supabase Auth flow.
+
+Ensure:
+
+- secure token storage,
+- session restoration,
+- logout,
+- deep-link handling if using OAuth/magic links.
+
+Do not store sensitive tokens in insecure generic storage.
+
+---
+
+## Exit Criteria
+
+A development build of the mobile app can authenticate and use the same production/staging backend safely.
+
+## Stop After Stage 10
+
+---
+
+# STAGE 11: Mobile Distribution
+
+## Goal
+
+Move from development app to installable beta.
+
+---
+
+## Android First
+
+Start with Android because it is simpler for early personal testing.
+
+Use the Expo/EAS workflow if appropriate.
+
+Stages:
+
+1. local/dev build
+2. internal APK/testing build
+3. closed beta
+4. Play Store later
+
+For iOS:
+
+- development testing
+- TestFlight
+- App Store later
+
+Do not begin store submission until privacy, account deletion, screenshots, icons, permissions, and production stability are ready.
+
+---
+
+# STAGE 12: Paid Infrastructure Trigger
+
+## Goal
+
+Know when to stop optimizing for "free."
+
+Free hosting is a starting point, not the long-term scalability strategy.
+
+Move to paid infrastructure when one or more of these occur:
+
+- real external users depend on the product,
+- cold-start latency becomes unacceptable,
+- database free-tier capacity approaches its limit,
+- backups become important,
+- service uptime matters,
+- usage exceeds free quotas,
+- commercial use conflicts with a provider's free-plan terms,
+- AI usage becomes material,
+- background jobs become necessary.
+
+At that point evaluate:
+
+- paid Vercel or alternative frontend hosting,
+- paid Render or another container/runtime provider,
+- Supabase Pro or another managed PostgreSQL tier,
+- proper backup/PITR,
+- queue/background worker,
+- dedicated monitoring.
+
+Do not migrate cloud providers merely because of hypothetical future scale.
+
+---
+
+# Suggested Delivery Sequence
+
+Execute in this exact order:
+
+```text
+Stage 0  Freeze current working product
+Stage 1  GitHub + CI
+Stage 2  Multi-user data model
+Stage 3  Authentication
+Stage 4  Security / production hardening
+Stage 5  Deploy public beta
+Stage 6  CI/CD + migration reliability
+Stage 7  Scalability refactor
+Stage 8  Multi-user productization
+Stage 9  PWA
+Stage 10 Native mobile foundation
+Stage 11 Mobile distribution
+Stage 12 Paid infrastructure when justified
+```
+
+---
+
+# What NOT to Build Yet
+
+Until these infrastructure stages are complete, avoid adding unrelated major finance features.
+
+Specifically do not prioritize:
+
+- V4 advanced Splitwise-style ledger,
+- complex settlements,
+- bank integrations,
+- automated SMS scraping,
+- email scraping,
+- investment portfolios,
+- net worth,
+- loans,
+- advanced budgeting,
+- large AI financial assistant,
+- microservices,
+- Redis,
+- Kafka,
+- Kubernetes,
+- event sourcing,
+- complex queues.
+
+The priority is:
+
+```text
+correctness
+-> user isolation
+-> security
+-> deployment
+-> reliability
+-> scalability
+-> mobile
+```
+
+not feature count.
+
+---
+
+# Instructions to Codex / Astra
+
+Before each stage:
+
+1. Read this roadmap.
+2. Read the current `Docs/PRD.md`.
+3. Inspect the repository state.
+4. Determine exactly what is already implemented.
+5. Explain the proposed changes for the current stage.
+6. Do not begin future stages.
+
+During implementation:
+
+- preserve existing functionality,
+- make schema changes through migrations,
+- keep changes reviewable,
+- add tests for security-critical behavior,
+- do not introduce unnecessary abstractions.
+
+After each stage:
+
+1. Run all relevant automated checks.
+2. Summarize what changed.
+3. List important files changed.
+4. List schema/migration changes.
+5. List environment-variable changes.
+6. List commands required from the developer.
+7. Explain any external dashboard/manual setup needed.
+8. Identify known limitations.
+9. State the next recommended stage.
+10. STOP and wait for approval.
+
+Do not automatically proceed to the next stage.
+
+---

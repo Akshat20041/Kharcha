@@ -1,0 +1,47 @@
+{
+  "name": "@kharcha/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:prepare:production": "tsx scripts/prepare-production.ts",
+    "data:transfer": "tsx scripts/transfer-local-data.ts",
+    "test:groq:live": "tsx scripts/check-groq.ts",
+    "dev:db": "tsx scripts/local-db.ts",
+    "predev": "prisma generate",
+    "dev": "tsx watch src/server.ts",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "lint": "eslint .",
+    "pretest": "prisma generate",
+    "test": "tsx --test test/*.test.ts",
+    "test:integration": "tsx --test test/integration/*.test.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio --hostname 127.0.0.1 --port 5555 --browser none",
+    "db:validate": "prisma validate",
+    "db:check": "tsx scripts/check-db.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@fastify/helmet": "^13.1.1",
+    "@prisma/adapter-pg": "6.19.3",
+    "@prisma/client": "6.19.3",
+    "@supabase/supabase-js": "^2.116.0",
+    "dotenv": "^17.0.0",
+    "exceljs": "^4.4.0",
+    "fastify": "^5.12.3",
+    "jszip": "^3.10.2",
+    "pg": "^8.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.0.0",
+    "embedded-postgres": "17.10.0-beta.17",
+    "prisma": "6.19.3",
+    "tsx": "^4.0.0"
+  }
+}

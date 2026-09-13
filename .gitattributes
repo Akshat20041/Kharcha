@@ -1,0 +1,4 @@
+# Keep source checkouts consistent across Windows and other platforms.
+* text=auto eol=lf
+# Applied migration checksums depend on exact bytes; never normalize them.
+apps/api/prisma/migrations/**/migration.sql -text
