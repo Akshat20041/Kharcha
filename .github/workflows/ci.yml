@@ -38,6 +38,12 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
         run: npm ci
+      - name: Standalone frontend production build (before Prisma generation)
+        env:
+          NEXT_PUBLIC_AUTH_MODE: supabase
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:3312
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-public-key
+        run: npm run build --workspace @kharcha/web
       - name: Generate Prisma client
         run: npm run db:generate
       - name: Validate Prisma schema
@@ -52,12 +58,8 @@ jobs:
         run: npm run test:web
       - name: Integration tests and migration replay
         run: npm run test:integration
-      - name: Production builds
-        env:
-          NEXT_PUBLIC_AUTH_MODE: supabase
-          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:3312
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: test-public-key
-        run: npm run build
+      - name: Backend production build
+        run: npm run build --workspace @kharcha/api
       - name: Install Chromium and system dependencies
         run: npx playwright install --with-deps chromium
       - name: Browser tests

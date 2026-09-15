@@ -20,6 +20,9 @@ if (publicKey?.startsWith("eyJ")) {
 }
 
 const nextConfig: NextConfig = {
+  // Browser-test fixtures import the API. They belong to the full typecheck,
+  // not the independently deployed frontend's production build.
+  typescript: { tsconfigPath: process.env.NODE_ENV === "production" ? "tsconfig.build.json" : "tsconfig.json" },
   distDir: process.env.KHARCHA_E2E === "1" ? ".next-e2e" : ".next",
   poweredByHeader: false,
   async headers() {

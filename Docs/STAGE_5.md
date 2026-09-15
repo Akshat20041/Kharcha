@@ -72,6 +72,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLIC_PUBLISHABLE_KEY
 
 No database URL, Groq key or private Supabase key belongs on Vercel. The build fails if Vercel is configured with local auth or non-HTTPS endpoints. Public variables are embedded during build, so changes require redeployment. See [Vercel monorepo setup](https://vercel.com/docs/monorepos).
 
+The frontend production build uses `apps/web/tsconfig.build.json` to exclude browser-test helpers that import the backend. Full `typecheck` still checks those helpers after Prisma generation. CI builds the frontend before generating Prisma to guard against accidentally requiring backend generated files on Vercel.
+
 Set Render `WEB_ORIGIN` to the final Vercel production origin and redeploy the API if it changed. In Supabase Authentication URL configuration, set Site URL to that origin and add the exact `https://YOUR_WEB_PROJECT.vercel.app/login` redirect URL. Keep localhost login redirects if you still use local development. Configure email delivery/confirmation for invited users; test both accounts' confirmation emails.
 
 PR preview deployments can build with the same public auth configuration, but the production API deliberately rejects preview origins. Full interactive previews need a separate preview backend/database and exact redirect/origin configuration; they are deferred. Do not enable wildcard production CORS or auth redirects to make previews work.
