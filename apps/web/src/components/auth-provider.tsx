@@ -16,16 +16,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
   const pathname = usePathname(); const router = useRouter();
-  const publicPage = pathname === "/login" || pathname === "/signup";
+  const publicPage = ["/login", "/signup", "/forgot-password", "/reset-password"].includes(pathname);
   useEffect(() => {
     if (!authEnabled) return;
     let active = true;
     let unsubscribe = () => {};
     try {
       const client = authClient();
-      const { data } = client.auth.onAuthStateChange((_event, next) => {
+      const { data } = client.auth.onAuthStateChange((event, next) => {
         if (!active) return;
         setSession(next); setLoaded(true);
+        if (event === "PASSWORD_RECOVERY") router.replace("/reset-password");
       });
       unsubscribe = () => data.subscription.unsubscribe();
       // INITIAL_SESSION is delivered by the SDK after persisted-session recovery.
@@ -43,13 +44,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!authEnabled) return;
     let active = true;
     setPreferences(null);
-    if (userId) {
+    if (userId && !publicPage) {
       void request<Profile>("/me").then((value) => {
         if (active) { setPreferences(value); setProfile(value); setError(""); }
       }).catch((failure: Error) => { if (active) setError(failure.message); });
     }
     return () => { active = false; };
-  }, [userId, retry]);
+  }, [userId, retry, publicPage]);
   useEffect(() => {
     if (authEnabled && loaded && !session && !publicPage && !error) router.replace("/login");
   }, [loaded, session, publicPage, error, router]);
@@ -58,6 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!loaded || !session || profile?.id !== userId) return <main className="auth-card" id="main-content" role="status">Opening your account…</main>;
   }
   return <AuthContext.Provider value={{ profile: profile?.id === userId ? profile : null, updateProfile: (value) => { setPreferences(value); setProfile(value); } }}>
-    <div key={authEnabled ? userId ?? "signed-out" : "local"}>{children}</div>
+    <div key={publicPage ? "public-auth" : authEnabled ? userId ?? "signed-out" : "local"}>{children}</div>
   </AuthContext.Provider>;
 }

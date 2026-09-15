@@ -34,7 +34,7 @@ const environmentSchema = z.object({
     const url = new URL(value.SUPABASE_URL ?? "");
     if (url.origin !== value.SUPABASE_URL || !(url.protocol === "https:" || url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname))) throw new Error();
   } catch { context.addIssue({ code: "custom", path: ["SUPABASE_URL"], message: "Valid Supabase origin required" }); }
-  if (!value.SUPABASE_PUBLISHABLE_KEY || value.SUPABASE_PUBLISHABLE_KEY.startsWith("sb_secret_")) {
+  if (!value.SUPABASE_PUBLISHABLE_KEY || !/^[A-Za-z0-9._-]+$/.test(value.SUPABASE_PUBLISHABLE_KEY) || value.SUPABASE_PUBLISHABLE_KEY.includes("...") || value.SUPABASE_PUBLISHABLE_KEY.startsWith("sb_secret_")) {
     context.addIssue({ code: "custom", path: ["SUPABASE_PUBLISHABLE_KEY"], message: "Public key required" });
   }
   if (value.SUPABASE_PUBLISHABLE_KEY?.startsWith("eyJ")) {

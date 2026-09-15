@@ -1,16 +1,31 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac, createHash, randomUUID } from "node:crypto";
 
 // Test-only Auth server. Real SDK requests reach this fixture; no live accounts,
 // email, production keys or application-level identity bypass are involved.
 export async function startAuthFixture(port = 0) {
   const app = Fastify();
-  await app.register(cors, { origin: true });
+  await app.register(cors, { origin: true, methods: ["GET", "HEAD", "POST", "PUT"] });
   const secret = randomUUID();
   type FixtureUser = { id: string; email: string; password: string; confirmed: boolean };
   const users = new Map<string, FixtureUser>();
   const refreshTokens = new Map<string, string>(); const revoked = new Set<string>();
+  const recoveryCodes = new Map<string, { userId: string; challenge: string; redirect: string }>();
+  app.post("/auth/v1/recover", async (request) => {
+    const body = request.body as { email: string; code_challenge: string };
+    const query = request.query as { redirect_to: string };
+    const user = [...users.values()].find((item) => item.email === body.email);
+    if (user) recoveryCodes.set(randomUUID(), { userId: user.id, challenge: body.code_challenge, redirect: query.redirect_to });
+    return {};
+  });
+  // Test fixture only: stands in for opening the email, never in the real API.
+  app.get("/__test/recovery-link", async (request, reply) => {
+    const email = (request.query as { email: string }).email;
+    const record = [...recoveryCodes].find(([, item]) => users.get(item.userId)?.email === email);
+    if (!record) return reply.code(404).send({});
+    return { url: `${record[1].redirect}?code=${record[0]}` };
+  });
   let url = ""; const metrics = { verified: 0, refreshed: 0 };
   function addUser(email: string, confirmed = true) {
     const user: FixtureUser = { id: randomUUID(), email, password: "Test-only-pass-123!", confirmed };
@@ -45,6 +60,13 @@ export async function startAuthFixture(port = 0) {
   });
   app.post("/auth/v1/token", async (request, reply) => {
     const query = request.query as { grant_type: string };
+    if (query.grant_type === "pkce") {
+      const body = request.body as { auth_code: string; code_verifier: string };
+      const recovery = recoveryCodes.get(body.auth_code);
+      if (!recovery || createHash("sha256").update(body.code_verifier).digest("base64url") !== recovery.challenge) return reply.code(400).send({ error_code: "bad_code_verifier", msg: "Invalid recovery code" });
+      recoveryCodes.delete(body.auth_code);
+      return session(users.get(recovery.userId)!);
+    }
     const body = request.body as { email?: string; password?: string; refresh_token?: string };
     const user = query.grant_type === "refresh_token" ? users.get(refreshTokens.get(body.refresh_token ?? "") ?? "")
       : [...users.values()].find((item) => item.email === body.email && item.password === body.password);
@@ -57,6 +79,14 @@ export async function startAuthFixture(port = 0) {
     const body = request.body as { email: string; password: string };
     const user = addUser(body.email, !body.email.startsWith("confirm")); user.password = body.password;
     return user.confirmed ? session(user) : publicUser(user);
+  });
+  app.put("/auth/v1/user", async (request, reply) => {
+    const user = verify((request.headers.authorization ?? "").replace(/^Bearer /i, ""));
+    if (!user) return reply.code(401).send({ code: "bad_jwt", message: "Invalid JWT" });
+    const password = (request.body as { password: string }).password;
+    if (typeof password !== "string" || password.length < 8) return reply.code(400).send({ code: "weak_password", message: "Weak password" });
+    user.password = password;
+    return publicUser(user);
   });
   app.post("/auth/v1/logout", async (request, reply) => {
     const token = (request.headers.authorization ?? "").replace(/^Bearer /i, "");

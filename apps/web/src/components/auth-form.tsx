@@ -11,7 +11,7 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
   useEffect(() => {
     if (!authEnabled) return;
     try {
-      const { data } = authClient().auth.onAuthStateChange((_event, session) => { if (session) router.replace("/"); });
+      const { data } = authClient().auth.onAuthStateChange((event, session) => { if (session) router.replace(event === "PASSWORD_RECOVERY" ? "/reset-password" : "/"); });
       return () => data.subscription.unsubscribe();
     } catch { /* The submit handler displays configuration errors. */ }
   }, [router]);
@@ -43,6 +43,7 @@ export function AuthForm({ signup = false }: { signup?: boolean }) {
       {signup && <p className="field-hint">Use at least 8 characters. Your password is handled by Supabase.</p>}
       {error && <p className="error-box" role="alert">{error}</p>}{message && <p className="saved-notice" role="status">{message}</p>}
       <button className="button primary" disabled={busy}>{busy ? "Please wait…" : signup ? "Create account" : "Sign in"}</button>
+      {!signup && <p><Link href="/forgot-password">Forgot password?</Link></p>}
       <p>{signup ? "Already have an account? " : "New to KharCha? "}<Link href={signup ? "/login" : "/signup"}>{signup ? "Sign in" : "Create account"}</Link></p>
     </form>}
   </main>;

@@ -1,5 +1,40 @@
 import { test, expect, type Page } from "@playwright/test";
 
+test("password recovery verifies the email code, validates confirmation and changes the password", async ({ page, request }) => {
+  await page.goto("/login");
+  await page.getByRole("link", { name: "Forgot password?" }).click();
+  await expect(page.getByRole("heading", { name: "Forgot password?" })).toBeVisible();
+  await page.getByLabel("Email", { exact: true }).fill("b@example.test");
+  await page.getByRole("button", { name: "Send reset link" }).click();
+  await expect(page.getByRole("status")).toContainText("If an account exists");
+  const email = await request.get("http://127.0.0.1:3312/__test/recovery-link?email=b@example.test");
+  const { url } = await email.json();
+  await page.goto(url);
+  await expect(page.getByLabel("New password", { exact: true })).toBeVisible();
+  await page.getByLabel("New password", { exact: true }).fill("Reset-password-456!");
+  await page.getByLabel("Confirm new password").fill("Not-matching-123!");
+  await page.getByRole("button", { name: "Update password" }).click();
+  await expect(page.locator("main [role=alert]")).toContainText("Passwords do not match");
+  await page.getByLabel("Confirm new password").fill("Reset-password-456!");
+  await page.getByRole("button", { name: "Update password" }).click();
+  await expect(page.getByRole("status")).toContainText("Password updated");
+  await page.getByRole("link", { name: "Back to sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await page.getByLabel("Email", { exact: true }).fill("b@example.test");
+  await page.getByLabel("Password", { exact: true }).fill("Reset-password-456!");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Your expenses" })).toBeVisible();
+  // Restore the fixture password for the remaining account-isolation tests.
+  await page.goto("/reset-password");
+  await page.getByLabel("New password", { exact: true }).fill("Test-only-pass-123!");
+  await page.getByLabel("Confirm new password").fill("Test-only-pass-123!");
+  await page.getByRole("button", { name: "Update password" }).click();
+  await expect(page.getByRole("status")).toContainText("Password updated");
+  await page.goto(url);
+  await expect(page.locator("main [role=alert]")).toContainText("invalid or expired");
+  await expect(page.getByRole("button", { name: "Update password" })).toHaveCount(0);
+});
+
 async function login(page: Page, email: string) {
   await page.goto("/login");
   await page.getByLabel("Email", { exact: true }).fill(email);

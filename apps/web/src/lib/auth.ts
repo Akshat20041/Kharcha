@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { validatePublicAuthKey } from "./auth-config";
 
 let client: SupabaseClient | undefined;
 export const authEnabled = process.env.NEXT_PUBLIC_AUTH_MODE === "supabase";
@@ -6,6 +7,7 @@ export function authClient() {
   if (client) return client;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  validatePublicAuthKey(key);
   if (!url || !key || key.startsWith("sb_secret_")) throw new Error("Sign-in is not configured. Add the Supabase project URL and public key, then restart the frontend.");
   client = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" } });
   return client;

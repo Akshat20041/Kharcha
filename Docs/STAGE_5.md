@@ -78,6 +78,8 @@ Set Render `WEB_ORIGIN` to the final Vercel production origin and redeploy the A
 
 PR preview deployments can build with the same public auth configuration, but the production API deliberately rejects preview origins. Full interactive previews need a separate preview backend/database and exact redirect/origin configuration; they are deferred. Do not enable wildcard production CORS or auth redirects to make previews work.
 
+Password recovery: add `https://kharcha-web-eta.vercel.app/reset-password` to Supabase's Authentication redirect allowlist (and `http://localhost:3000/reset-password` for local testing). Login links to `/forgot-password`; Supabase emails a PKCE link to `/reset-password`, where the verified session can set a new password and sign out. Open the email link in the same browser that requested it. Expired/used links require a new request. Configure Supabase email delivery for actual recipients; the application does not send mail itself. Copy complete public keys using Supabase's Copy button, never masked dots or shortened previews; malformed keys are rejected at build/startup.
+
 ## 5. Verify the public beta
 
 Run this read-only smoke test after both hosts are live:

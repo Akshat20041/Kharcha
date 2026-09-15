@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { validatePublicAuthKey } from "./src/lib/auth-config";
 
 const authMode = process.env.NEXT_PUBLIC_AUTH_MODE ?? "local";
 if (process.env.VERCEL === "1") {
@@ -11,6 +12,7 @@ if (process.env.VERCEL === "1") {
 }
 if (!["local", "supabase"].includes(authMode)) throw new Error("Invalid NEXT_PUBLIC_AUTH_MODE");
 const publicKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+if (authMode === "supabase") validatePublicAuthKey(publicKey);
 if (publicKey?.startsWith("sb_secret_")) throw new Error("Supabase frontend configuration requires a public key");
 if (publicKey?.startsWith("eyJ")) {
   try {
