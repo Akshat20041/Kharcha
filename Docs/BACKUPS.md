@@ -60,7 +60,8 @@ if ((Get-FileHash -Algorithm SHA256 -LiteralPath $backupPath).Hash -ne $expected
 createdb --password --template=template0 "$restoreDatabase"
 if ($LASTEXITCODE -ne 0) { throw 'Could not create a fresh drill database; stop.' }
 $env:PGDATABASE = $restoreDatabase
-pg_restore --password --dbname="$restoreDatabase" --no-owner --no-acl --exit-on-error --single-transaction "$backupPath"
+# --clean handles the default public schema in this newly created drill DB only.
+pg_restore --password --dbname="$restoreDatabase" --clean --if-exists --no-owner --no-acl --exit-on-error --single-transaction "$backupPath"
 if ($LASTEXITCODE -ne 0) { throw 'Restore failed; investigate this isolated database.' }
 psql --password --set=ON_ERROR_STOP=1 --command='SELECT migration_name, finished_at, rolled_back_at FROM public._prisma_migrations ORDER BY migration_name;'
 if ($LASTEXITCODE -ne 0) { throw 'Migration history verification failed.' }
