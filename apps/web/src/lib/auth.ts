@@ -16,11 +16,13 @@ export function authClient() {
 export async function authorizedFetch(url: string, init: RequestInit = {}) {
   if (!authEnabled) return fetch(url, init);
   const { data, error } = await authClient().auth.getSession();
-  if (error || !data.session) {
+  if (error) throw error;
+  if (!data.session) {
     window.dispatchEvent(new Event("kharcha:unauthorized"));
     throw new Error("Please sign in to continue.");
   }
   const userId = data.session.user.id;
+  init.signal?.throwIfAborted();
   const headers = new Headers(init.headers);
   headers.set("Authorization", `Bearer ${data.session.access_token}`);
   const response = await fetch(url, { ...init, headers });

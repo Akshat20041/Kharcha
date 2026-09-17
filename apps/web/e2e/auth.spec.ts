@@ -1,5 +1,42 @@
 import { test, expect, type Page } from "@playwright/test";
 
+test("reopening a saved session recovers from network errors and a slow API without another login", async ({ page, context }) => {
+  await login(page, "a@example.test");
+  await page.close();
+  const reopened = await context.newPage();
+  let attempts = 0;
+  await reopened.route("http://localhost:3311/me", async (route) => {
+    attempts++;
+    if (attempts === 1) return route.abort("failed");
+    if (attempts === 2) return route.fulfill({ status: 503, body: "Service waking up" });
+    await new Promise((resolve) => setTimeout(resolve, 14000));
+    await route.continue();
+  });
+  await reopened.goto("/");
+  await expect(reopened.getByRole("status")).toContainText("retry automatically");
+  await expect(reopened.getByRole("heading", { name: "Your expenses" })).toBeVisible({ timeout: 25000 });
+  expect(attempts).toBe(3);
+  await expect(reopened.getByRole("heading", { name: "Welcome back" })).toHaveCount(0);
+  await reopened.close();
+});
+
+test("account retries are bounded and the error screen can recover or sign out", async ({ page }) => {
+  await login(page, "a@example.test");
+  let attempts = 0;
+  await page.route("http://localhost:3311/me", (route) => { attempts++; return route.fulfill({ status: 503, body: "Unavailable" }); });
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Couldn’t open your account" })).toBeVisible({ timeout: 15000 });
+  expect(attempts).toBe(4);
+  await page.unroute("http://localhost:3311/me");
+  await page.getByRole("button", { name: "Retry", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Your expenses" })).toBeVisible();
+  await page.route("http://localhost:3311/me", (route) => route.fulfill({ status: 403, contentType: "application/json", body: JSON.stringify({ error: "Forbidden" }) }));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Couldn’t open your account" })).toBeVisible();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+});
+
 test("password recovery verifies the email code, validates confirmation and changes the password", async ({ page, request }) => {
   await page.goto("/login");
   await page.getByRole("link", { name: "Forgot password?" }).click();

@@ -36,7 +36,7 @@ export async function startAuthFixture(port = 0) {
     email_confirmed_at: user.confirmed ? "2026-01-01T00:00:00Z" : null, app_metadata: { provider: "email", providers: ["email"] }, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" });
   function token(id: string, overrides: Record<string, unknown> = {}) {
     const data = [Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url"),
-      Buffer.from(JSON.stringify({ sub: id, iss: `${url}/auth/v1`, aud: "authenticated", role: "authenticated", exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000), ...overrides })).toString("base64url")].join(".");
+      Buffer.from(JSON.stringify({ sub: id, jti: randomUUID(), iss: `${url}/auth/v1`, aud: "authenticated", role: "authenticated", exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000), ...overrides })).toString("base64url")].join(".");
     return `${data}.${createHmac("sha256", secret).update(data).digest("base64url")}`;
   }
   function verify(value: string) {
@@ -88,7 +88,11 @@ export async function startAuthFixture(port = 0) {
     user.password = password;
     return publicUser(user);
   });
-  app.post("/auth/v1/logout", async (request, reply) => {
+  app.post("/auth/v1/logout", {
+    // Supabase accepts the SDK's bodyless JSON logout request. Browser request
+    // interception can omit Content-Length: 0, which Fastify otherwise rejects.
+    onRequest: async (request) => { delete request.headers["content-type"]; },
+  }, async (request, reply) => {
     const token = (request.headers.authorization ?? "").replace(/^Bearer /i, "");
     const user = verify(token); revoked.add(token);
     if (user) for (const [key, id] of refreshTokens) { if (id === user.id) refreshTokens.delete(key); }
