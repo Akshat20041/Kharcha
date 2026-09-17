@@ -138,18 +138,25 @@ test("sessions survive refresh, profile timezone persists, exports authenticate 
   } finally { await second.close(); }
 });
 
-test("expired persisted sessions refresh and rejected API sessions return to login", async ({ page }) => {
+test("expired persisted sessions refresh and rejected API sessions return to login", async ({ page, browser }) => {
   await login(page, "a@example.test");
-  await page.evaluate(() => {
-    const key = Object.keys(localStorage).find((key) => key.endsWith("-auth-token"))!;
-    const session = JSON.parse(localStorage.getItem(key)!); session.expires_at = 1;
-    localStorage.setItem(key, JSON.stringify(session));
-  });
-  const refreshed = page.waitForResponse((response) => response.url().includes("grant_type=refresh_token") && response.status() === 200);
-  await page.reload(); await refreshed;
-  await expect(page.getByRole("heading", { name: "Your expenses" })).toBeVisible();
-  await page.route("http://localhost:3311/transactions**", (route) => route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Session expired" }) }));
-  await page.getByRole("button", { name: "Refresh", exact: true }).click();
-  await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("article")).toHaveCount(0);
+  const storage = await page.context().storageState();
+  await page.close();
+  const entry = storage.origins.flatMap((origin) => origin.localStorage).find((item) => item.name.endsWith("-auth-token"));
+  expect(entry).toBeTruthy();
+  const session = JSON.parse(entry!.value); session.expires_at = 1;
+  entry!.value = JSON.stringify(session);
+  // Start from an expired persisted snapshot, with no active SDK that can
+  // refresh or overwrite it before the response listener is installed.
+  const restoredContext = await browser.newContext({ storageState: storage });
+  try {
+    const restored = await restoredContext.newPage();
+    const refreshed = restored.waitForResponse((response) => response.url().includes("grant_type=refresh_token") && response.status() === 200);
+    await restored.goto("/"); await refreshed;
+    await expect(restored.getByRole("heading", { name: "Your expenses" })).toBeVisible();
+    await restored.route("http://localhost:3311/transactions**", (route) => route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Session expired" }) }));
+    await restored.getByRole("button", { name: "Refresh", exact: true }).click();
+    await expect(restored).toHaveURL(/\/login$/);
+    await expect(restored.getByRole("article")).toHaveCount(0);
+  } finally { await restoredContext.close(); }
 });
