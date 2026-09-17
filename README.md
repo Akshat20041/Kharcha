@@ -174,6 +174,10 @@ Use `main` for the working baseline, `feature/*` for additions and `fix/*` for f
 
 The [CI workflow](.github/workflows/ci.yml) installs locked dependencies with an npm download cache, validates Prisma, runs lint/type checks, backend/frontend unit tests, isolated PostgreSQL integration tests, production builds and Chromium browser tests. It runs on pull requests and pushes to `main`, and can also be started manually. No GitHub secrets are needed; tests use disposable databases and a mock Groq provider. The live Groq check remains opt-in locally.
 
+Stage 6 adds committed migration-history protection and release-guard tests to CI. Follow the [release, migration and recovery runbook](Docs/STAGE_6.md): protected PRs into `main`, Vercel Git deployments, and Render **After CI Checks Pass**. Existing manually created Render services need that setting changed in the dashboard; editing the Blueprint alone does not reconfigure them. Run `npm.cmd run test:release` locally. Use the **Verify production** workflow after both deployments finish; it does not require secrets or send finance writes.
+
+See [database backups and restore drills](Docs/BACKUPS.md) before a production migration. Database passwords and finance backups stay outside GitHub/CI. Application-schema backups do not include Supabase Auth; Excel exports are not disaster-recovery backups.
+
 ## Screens and supporting documentation
 
 - Transactions `/`: CRUD, splits, past dates, natural-language quick entry and Excel export.

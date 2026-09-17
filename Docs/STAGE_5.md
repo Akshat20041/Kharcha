@@ -1,6 +1,6 @@
 # Stage 5: Cloud deployment
 
-Status: deployment files prepared for the user-created GitHub repository; public deployment and hosted two-account verification are pending hosting setup. Do not tag the beta until the checklist below passes. Stage 6 automation is not included.
+Status: both public services are deployed; public smoke checks pass. The full hosted two-account checklist below still requires a recorded result before tagging the beta. Stage 6 now supersedes the manual release settings below; see [CI/CD and recovery](STAGE_6.md).
 
 2026-09-16 update: the hosted database was initialized successfully with all five migrations and reference categories over a verified TLS connection. No local personal transactions were uploaded. The API bundles the public Supabase CA in `apps/api/certs` for verified hosted database connections; deploy the updated API before retesting login. Hosted authenticated feature/two-account checks remain pending.
 

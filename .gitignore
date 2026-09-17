@@ -28,6 +28,8 @@ apps/web/next-env.d.ts
 *.csv
 *.dump
 *.backup
+*.sql.gz
+*.dump.sha256
 
 # Local credentials and machine-specific tooling.
 .envrc

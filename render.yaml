@@ -6,7 +6,7 @@ services:
     runtime: node
     plan: free
     branch: main
-    autoDeployTrigger: off
+    autoDeployTrigger: checksPass
     buildCommand: npm ci --include=dev && npm run build --workspace @kharcha/api
     startCommand: npm run start --workspace @kharcha/api
     healthCheckPath: /health
