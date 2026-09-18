@@ -10,6 +10,8 @@
     "npm": ">=11"
   },
   "scripts": {
+    "check:migrations": "node scripts/check-migrations.mjs",
+    "test:release": "node --test scripts/check-migrations.test.mjs",
     "check:deployment": "node scripts/check-deployment.mjs",
     "db:prepare:production": "npm run db:prepare:production --workspace @kharcha/api --",
     "data:transfer": "npm run data:transfer --workspace @kharcha/api --",

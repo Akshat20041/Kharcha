@@ -1,0 +1,24 @@
+name: Verify production
+
+# Explicit post-deployment check, not a keep-alive schedule or a check that
+# Render must wait for before it can deploy.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Public production smoke check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+      - name: Verify public endpoints and security boundaries
+        run: node scripts/check-deployment.mjs https://kharcha-web-eta.vercel.app https://kharcha-api-zg7j.onrender.com

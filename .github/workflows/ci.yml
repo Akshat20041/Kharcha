@@ -30,6 +30,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Set up Node.js and npm cache
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -38,6 +39,12 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install locked dependencies
         run: npm ci
+      - name: Protect committed migration history
+        env:
+          MIGRATION_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}
+        run: node scripts/check-migrations.mjs
+      - name: Migration guard tests
+        run: node --test scripts/check-migrations.test.mjs
       - name: Standalone frontend production build (before Prisma generation)
         env:
           NEXT_PUBLIC_AUTH_MODE: supabase
