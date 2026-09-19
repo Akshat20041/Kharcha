@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check:query-plans": "tsx scripts/check-query-plans.ts",
     "db:prepare:production": "tsx scripts/prepare-production.ts",
     "data:transfer": "tsx scripts/transfer-local-data.ts",
     "test:groq:live": "tsx scripts/check-groq.ts",

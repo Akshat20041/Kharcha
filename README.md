@@ -94,6 +94,7 @@ Open **http://localhost:3000**. Backend: **http://localhost:3001**. Stop process
 | | `HOST`, `PORT` | Defaults: `127.0.0.1`, `3001` |
 | | `WEB_ORIGIN` | Default `http://localhost:3000`; exact origin, no trailing slash |
 | | `LOG_LEVEL` | Default `info` |
+| | `SLOW_REQUEST_MS` | Backend slow-request warning threshold; defaults to 1000 ms |
 | | `APP_TIMEZONE` | IANA timezone; example `Asia/Kolkata`; host timezone if omitted |
 | | `GROQ_API_KEY` | Optional backend-only secret; blank disables AI, not manual entry |
 | | `GROQ_MODEL` | Default `qwen/qwen3.8-27b`; provider/account availability may change |
@@ -179,6 +180,8 @@ Stage 6 adds committed migration-history protection and release-guard tests to C
 See [database backups and restore drills](Docs/BACKUPS.md) before a production migration. Database passwords and finance backups stay outside GitHub/CI. Application-schema backups do not include Supabase Auth; Excel exports are not disaster-recovery backups.
 
 ## Screens and supporting documentation
+
+Stage 7 keeps the modular monolith and existing REST contracts. See [query/index review and monitoring](Docs/STAGE_7.md). `npm.cmd run check:query-plans` creates an isolated synthetic database and prints PostgreSQL plans; it never benchmarks or modifies your real database. The **Production availability** workflow checks the deployed app hourly, with failure notifications controlled by your GitHub Actions notification preferences.
 
 - Transactions `/`: CRUD, splits, past dates, natural-language quick entry and Excel export.
 - Accounts `/login`, `/signup`, `/settings`: Supabase authentication and profile preferences.

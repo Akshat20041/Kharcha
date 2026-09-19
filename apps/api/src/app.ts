@@ -18,6 +18,8 @@ import { groqProvider, type ExpenseProvider } from "./expense-parser/provider.js
 import { LOCAL_USER_ID, requireUserId, type IdentityResolver } from "./identity.js";
 import { supabaseIdentity } from "./auth.js";
 import { registerProfile } from "./profile.js";
+import { registerCategories } from "./categories/routes.js";
+import { registerRequestLogging } from "./observability.js";
 
 export function buildApp(config: Config, options: { db?: PrismaClient; clock?: () => Date; expenseProvider?: ExpenseProvider; resolveIdentity?: IdentityResolver; logStream?: { write(message: string): void } } = {}) {
   const app = Fastify({
@@ -56,12 +58,9 @@ export function buildApp(config: Config, options: { db?: PrismaClient; clock?: (
     const retry = limits.take(`user:${request.userId}:${bucket}`, maximum * multiplier);
     if (retry) { reply.header("Retry-After", retry); throw new ApiError(429, "Too many requests. Please try again shortly."); }
   });
-  app.addHook("onResponse", async (request, reply) => {
-    request.log.info({ method: request.method, route: request.routeOptions.url ?? "unmatched",
-      statusCode: reply.statusCode, latencyMs: reply.elapsedTime,
-      ...(request.userId ? { userId: request.userId } : {}) }, "Request completed");
-  });
+  registerRequestLogging(app, config.SLOW_REQUEST_MS);
   registerProfile(app, db);
+  registerCategories(app, db);
   registerTransactionRoutes(app, db, config.APP_TIMEZONE, options.clock ?? (() => new Date()));
   registerRecurringRoutes(app, db, config.APP_TIMEZONE, options.clock ?? (() => new Date()));
   registerDashboard(app, db, config.APP_TIMEZONE, options.clock ?? (() => new Date()));
@@ -89,7 +88,8 @@ export function buildApp(config: Config, options: { db?: PrismaClient; clock?: (
       return reply.code(statusCode).send({ error: "Invalid request" });
     }
     // Do not return or log raw database errors that can contain financial data.
-    request.log.error({ code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "INTERNAL_ERROR" }, "Request failed");
+    request.log.error({ event: "error_detail", route: request.routeOptions.url ?? "unmatched",
+      code: error instanceof Prisma.PrismaClientKnownRequestError ? error.code : "INTERNAL_ERROR" }, "Request failed");
     return reply.code(500).send({ error: "Internal server error" });
   });
 

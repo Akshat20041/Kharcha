@@ -1,0 +1,29 @@
+name: Production availability
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-availability
+  cancel-in-progress: false
+
+jobs:
+  availability:
+    name: Hourly public availability check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+      # One hourly check permits the free API to sleep. No keep-alive loop.
+      # Existing probe allows 90 seconds for a cold start and performs no writes.
+      - run: node scripts/check-deployment.mjs https://kharcha-web-eta.vercel.app https://kharcha-api-zg7j.onrender.com
