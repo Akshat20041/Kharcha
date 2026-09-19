@@ -199,7 +199,7 @@ test("PostgreSQL migrations, constraints, seeds, and transaction API", { timeout
   });
 
   await t.test("unexpected database failures return a generic error", async () => {
-    const badApp = buildApp(readConfig({ ...config, PORT: String(config.PORT), DATABASE_URL: "postgresql://none:none@127.0.0.1:1/missing" }));
+    const badApp = buildApp({ ...config, DATABASE_URL: "postgresql://none:none@127.0.0.1:1/missing" });
     try {
       const response = await badApp.inject("/transactions");
       assert.equal(response.statusCode, 500);

@@ -6,10 +6,6 @@ import { transactionService } from "./service.js";
 export function registerTransactionRoutes(app: FastifyInstance, db: PrismaClient, timeZone: string, clock: () => Date) {
   const service = (request: FastifyRequest) => transactionService(db, request.userTimeZone || timeZone, clock, request.userId);
 
-  app.get("/categories", async () => ({
-    data: await db.category.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-  }));
-
   app.post("/transactions", async (request, reply) => {
     const row = await service(request).create(createSchema.parse(request.body));
     return reply.code(201).header("Location", `/transactions/${row.id}`).send(row);

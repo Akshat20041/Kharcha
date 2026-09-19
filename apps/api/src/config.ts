@@ -13,6 +13,7 @@ const environmentSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   WEB_ORIGIN: httpOrigin.default("http://localhost:3000"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  SLOW_REQUEST_MS: z.coerce.number().int().min(1).max(120000).default(1000),
   GROQ_API_KEY: z.string().trim().optional(),
   GROQ_MODEL: z.string().trim().min(1).max(100).default("qwen/qwen3.8-27b"),
   AUTH_MODE: z.enum(["local", "supabase"]).default("local"),

@@ -10,6 +10,7 @@
     "npm": ">=11"
   },
   "scripts": {
+    "check:query-plans": "npm run check:query-plans --workspace @kharcha/api",
     "check:migrations": "node scripts/check-migrations.mjs",
     "test:release": "node --test scripts/check-migrations.test.mjs",
     "check:deployment": "node scripts/check-deployment.mjs",

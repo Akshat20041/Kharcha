@@ -65,6 +65,8 @@ jobs:
         run: npm run test:web
       - name: Integration tests and migration replay
         run: npm run test:integration
+      - name: Synthetic PostgreSQL query-plan review
+        run: npm run check:query-plans
       - name: Backend production build
         run: npm run build --workspace @kharcha/api
       - name: Install Chromium and system dependencies
